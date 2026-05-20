@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "sage",
+  "displayName": "Sage",
+  "version": "0.1.0",
+  "description": "Disciplined Plan → Execute pipeline with a Quick fast-path. Strict TDD, atomic Conventional Commits, sub-agent orchestration, persistent .planning/ directory.",
+  "author": {
+    "name": "Cezar Ferreira",
+    "email": "cezarleferr@gmail.com"
+  },
+  "keywords": ["workflow", "tdd", "planning", "sub-agents"]
+}
