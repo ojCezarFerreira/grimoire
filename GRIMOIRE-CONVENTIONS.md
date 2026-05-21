@@ -1,6 +1,6 @@
 # Grimoire Conventions
 
-Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-plan`, `grimoire-execute`, `grimoire-quick`). Each SKILL.md references this file as required reading. Do not duplicate these rules inside skill bodies — update them here.
+Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-init`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`). Each SKILL.md references this file as required reading. Do not duplicate these rules inside skill bodies — update them here.
 
 ---
 
@@ -56,12 +56,28 @@ Generate a single plan when the feature fits comfortably in one execution contex
 - Single plan file → move the `.md` to `.grimoire/finished/`.
 - Sub-plan directory → move the **entire** parent folder into `.grimoire/finished/`, preserving its internal structure.
 
+**Project context file:**
+- `.grimoire/PROJECT.md` — persistent project context generated and updated by `grimoire-init`. Loaded by every skill's `[Required Reading]` block. Not subject to `NNN-` numbering and never moved to `.grimoire/finished/`.
+
+---
+
+## § Project context
+
+Every Grimoire skill loads `.grimoire/PROJECT.md` (if present) at the top of its `[Required Reading]` block so the orchestrator — and the sub-agents it spawns — share a baseline understanding of the project.
+
+- **If `.grimoire/PROJECT.md` exists:** read it as project context before doing anything else.
+- **If it does not exist:** proceed without it, and at the end of the run remind the user that running `grimoire-init` once will give future Grimoire sessions richer context. This is non-blocking — never refuse to work because `PROJECT.md` is missing.
+- **`grimoire-init` is the only skill that writes `PROJECT.md`.** Other skills must not modify it as a side effect.
+- **Update mode:** when `grimoire-init` is invoked and `.grimoire/PROJECT.md` already exists, it reads the existing file first and asks only about deltas (what has changed or is missing), then rewrites the file in place.
+
 ---
 
 ## § Pause-point pattern
 
 Grimoire skills must pause and wait for the user at well-defined checkpoints. Never proceed past a pause silently.
 
+- **`grimoire-init` — clarifying questions:** after analyzing the codebase, ask the user only about facts that cannot be inferred from the code (purpose, audience, stage, non-obvious constraints). In update mode, ask only about deltas.
+- **`grimoire-init` — draft review:** after composing the proposed `PROJECT.md`, output it inline and PAUSE for the user's confirmation or edits before writing the file.
 - **`grimoire-plan` — unclear requirements:** if any requirement is ambiguous or a critical architectural decision is needed, ask clarifying questions before writing the plan.
 - **`grimoire-quick` — scope gatekeeper:** if the request is too large/complex to fit a quick execution, STOP immediately and tell the user to switch to `grimoire-plan` instead of generating a plan.
 - **`grimoire-quick` — plan authorization:** after outputting the inline plan in chat, PAUSE and wait for the user's explicit authorization or corrections before spawning the sub-agent. Do not start coding yet.
