@@ -5,9 +5,9 @@ argument-hint: Task/fix description
 ---
 
 **[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Commits, § Project context, § Historic, § Pause-point pattern) are load-bearing for this skill.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Commits, § Project context, § Historic, § Pause-point pattern) are load-bearing for this skill. **Note:** quick is fully ephemeral — it never creates a page folder under `.grimoire/pages/` and never writes to `HISTORIC.md`. Reads only.
 2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and suggest the user run `grimoire-init` once this task is complete.
-3. If `.grimoire/HISTORIC.md` exists, read it for recent-execution context. If older context seems relevant, browse `.grimoire/bag/historic/` (newest suffix first). Missing → proceed without it.
+3. If `.grimoire/HISTORIC.md` exists, read it for recent-page context. If older context seems relevant, browse `.grimoire/bag/historic/` (newest suffix first). Missing → proceed without it.
 
 **[Objective]**
 I need you to quickly resolve the following minor adjustment or bug fix:
