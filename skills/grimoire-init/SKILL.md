@@ -5,7 +5,8 @@ argument-hint: (optional) extra context or focus areas
 ---
 
 **[Required Reading]**
-Before proceeding, read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ .grimoire/ layout, § Project context, § Commits, § Pause-point pattern) are load-bearing for this skill.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ .grimoire/ layout, § Project context, § Historic, § Commits, § Pause-point pattern) are load-bearing for this skill.
+2. If `.grimoire/HISTORIC.md` exists, read it for recent-execution context (older context lives in `.grimoire/bag/historic/`, newest suffix first). Missing → proceed without it; do not create it (a future skill owns bootstrap).
 
 **[Objective]**
 Build a shared understanding of the current project — what it is, who it's for, how it's built — and persist it as `.grimoire/PROJECT.md`. From then on every other Grimoire skill loads that file on startup as project context.
