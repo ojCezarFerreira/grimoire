@@ -5,7 +5,8 @@ argument-hint: @caminho-para-o-plano
 ---
 
 **[Required Reading]**
-Before proceeding, read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Commits, § .grimoire/ layout) are load-bearing for this skill.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Commits, § .grimoire/ layout, § Project context) are load-bearing for this skill.
+2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and suggest the user run `grimoire-init` once this task is complete.
 
 **[Objective]**
 Execute the development plan(s) located at: $1

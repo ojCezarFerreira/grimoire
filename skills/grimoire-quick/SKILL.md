@@ -5,7 +5,8 @@ argument-hint: Task/fix description
 ---
 
 **[Required Reading]**
-Before proceeding, read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Commits, § Pause-point pattern) are load-bearing for this skill.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Commits, § Project context, § Pause-point pattern) are load-bearing for this skill.
+2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and suggest the user run `grimoire-init` once this task is complete.
 
 **[Objective]**
 I need you to quickly resolve the following minor adjustment or bug fix:
