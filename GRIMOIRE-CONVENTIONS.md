@@ -1,6 +1,8 @@
 # Grimoire Conventions
 
-Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-init`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`). Each SKILL.md references this file as required reading. Do not duplicate these rules inside skill bodies — update them here.
+Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-init`, `grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`). Each SKILL.md references this file as required reading. Do not duplicate these rules inside skill bodies — update them here.
+
+The long-form pipeline is **Spec → Plan → Execute**: `grimoire-spec` gathers context and writes the page's `SPEC.md`, `grimoire-plan` reads that SPEC and writes the executable step files, `grimoire-execute` runs the step files. `grimoire-quick` is a separate fast-path that bypasses all three.
 
 ---
 
@@ -36,7 +38,8 @@ Always instruct the sub-agent with the specific step file (or inline plan) it mu
 - Commit immediately after each logical step completes (typically end of Green or Refactor).
 - Use **Conventional Commits in English**: `feat:`, `fix:`, `test:`, `refactor:`, `chore:`, `style:`, `docs:`.
 - One logical change per commit — do not bundle unrelated edits.
-- `grimoire-plan` ends its run with a `chore: register page <name> in historic` commit covering the new `HISTORIC.md` entry (and any rotation to `.grimoire/bag/historic/`). This commit is separate from the planning-file commit(s).
+- `grimoire-spec` ends its run with two commits: `docs(grimoire): spec page <name>` for the new `SPEC.md` file, followed by `chore: register page <name> in historic` covering the new `HISTORIC.md` entry (and any rotation to `.grimoire/bag/historic/`).
+- `grimoire-plan` ends its run with a `chore: mark page <name> planned` commit covering the in-place `HISTORIC.md` status update from `[spec]` to `[planned]`. This commit is separate from the step-file commit(s). `grimoire-plan` **never bootstraps, appends, or rotates** `HISTORIC.md`.
 - `grimoire-execute` ends its run with a `chore: mark page <name> finished` commit covering the in-place `HISTORIC.md` status update from `[planned]` to `[finished]`. No files are moved on completion.
 
 ---
@@ -48,21 +51,27 @@ Every feature, change, or alteration tracked by Grimoire is a **page**. All page
 **Page folder (mandatory for every page):**
 - Path: `.grimoire/pages/NNN-[page-name]/` (e.g., `.grimoire/pages/001-user-auth/`).
 - `NNN` is incremental and chronological across the whole project (`001`, `002`, `003`, …).
+- The folder is **created by `grimoire-spec`** when the page is first specified. `grimoire-plan` and `grimoire-execute` never create page folders — they look up an existing one by number.
+
+**Spec file inside a page folder:**
+- `SPEC.md` at the root of the page folder describes the page in detail (Context, Goals, Non-goals, Scope, Acceptance criteria, Constraints, Open questions, References to code).
+- Written by `grimoire-spec`; consumed by `grimoire-plan` as the source of truth for what to plan.
+- A page without `SPEC.md` is not eligible for planning — `grimoire-plan` hard-stops if it is missing.
 
 **Step files inside a page folder:**
 - Always sequential, page-scoped numbering: `1-[step-name].md`, `2-[step-name].md`, `3-[step-name].md`, … (e.g., `1-schema.md`, `2-endpoints.md`, `3-tests.md`).
 - A simple page has a single step file (`1-[step-name].md`); a larger page has multiple.
-- `grimoire-plan` chooses how many step files a page needs based on projected context lucidity per step — same heuristic as the old single-vs-split decision, but the output shape is always a folder of sequential step files.
+- Written by `grimoire-plan`. `grimoire-plan` chooses how many step files a page needs based on projected context lucidity per step.
 
 **On completion (`grimoire-execute`):**
-- The page folder and its step files stay in place. **Nothing is moved.**
+- The page folder, its `SPEC.md`, and its step files stay in place. **Nothing is moved.**
 - The page's entry in `HISTORIC.md` is updated from `[planned]` to `[finished]`. See `§ Historic`.
 
 **Project context file:**
 - `.grimoire/PROJECT.md` — persistent project context generated and updated by `grimoire-init`. Loaded by every skill's `[Required Reading]` block. Not subject to `NNN-` numbering.
 
 **Recent execution log:**
-- `.grimoire/HISTORIC.md` — recency log and status-of-record for the last 5 pages. Bootstrapped, appended, and rotated by `grimoire-plan`; status-updated to `[finished]` by `grimoire-execute`. See `§ Historic`.
+- `.grimoire/HISTORIC.md` — recency log and status-of-record for the last 5 pages. Bootstrapped, appended, and rotated by `grimoire-spec`; status-updated to `[planned]` by `grimoire-plan`; status-updated to `[finished]` by `grimoire-execute`. See `§ Historic`.
 - `.grimoire/bag/historic/` — archive. When `HISTORIC.md` already has 5 entries and a new page must be added, the file is rotated here with a `HISTORIC-N.md` suffix before a fresh `HISTORIC.md` is started.
 
 ---
@@ -84,23 +93,26 @@ Every Grimoire skill loads `.grimoire/PROJECT.md` (if present) at the top of its
 
 **Entry format:**
 ```
-N. **<page-name>** [planned|finished] — <1–2 sentence description of what the page delivers>
+N. **<page-name>** [spec|planned|finished] — <1–2 sentence description of what the page delivers>
 ```
-Newest entry is item `1.`; older entries are renumbered downward. Status is one of `[planned]` or `[finished]`.
+Newest entry is item `1.`; older entries are renumbered downward. Status is one of `[spec]`, `[planned]`, or `[finished]`. The progression is strictly `[spec]` → `[planned]` → `[finished]`; statuses never move backwards and never skip a step.
 
-**Write responsibilities (split across two skills):**
+**Write responsibilities (split across three skills):**
 
-- **`grimoire-plan` — bootstrap, append, rotate.** Runs after the page folder and step files have been written.
-  - If `.grimoire/HISTORIC.md` **does not exist** → create it with the new page as entry `1.` with status `[planned]`. (This replaces the previous "future skill owns bootstrap" rule.)
-  - If the entry for this page **already exists** (rerun/replan) → ensure its status is `[planned]` and refresh the description in place; do not duplicate and do not move its position.
-  - If the entry does **not** exist and the file has **fewer than 5 entries** → prepend the new entry at the top with status `[planned]`, renumbering the previous ones.
-  - If the entry does **not** exist and the file already has **5 entries** → **rotate first** (see below), then write a brand-new `HISTORIC.md` containing only the new entry as item `1.` with status `[planned]`.
+- **`grimoire-spec` — bootstrap, append, rotate.** Runs after the page folder and `SPEC.md` have been written. This is the **only** skill that creates entries, prepends entries, or rotates the file.
+  - If `.grimoire/HISTORIC.md` **does not exist** → create it with the new page as entry `1.` with status `[spec]`.
+  - If the entry for this page **already exists** (re-spec) → ensure its status is `[spec]` and refresh the description in place; do not duplicate and do not move its position.
+  - If the entry does **not** exist and the file has **fewer than 5 entries** → prepend the new entry at the top with status `[spec]`, renumbering the previous ones.
+  - If the entry does **not** exist and the file already has **5 entries** → **rotate first** (see below), then write a brand-new `HISTORIC.md` containing only the new entry as item `1.` with status `[spec]`.
+- **`grimoire-plan` — status update only.** Runs after the step files have been written.
+  - Find the entry whose `<page-name>` matches the planned page and update its status from `[spec]` to `[planned]` **in place** — do not change its position, do not append a new entry.
+  - `grimoire-plan` **never appends new entries and never rotates**. If the matching entry is not in `[spec]` status (missing, `[planned]`, or `[finished]`), hard-stop per `§ Pause-point pattern` — never silently update.
 - **`grimoire-execute` — status update only.** Runs after a successful execution of the page.
   - Find the entry whose `<page-name>` matches the executed page and update its status from `[planned]` to `[finished]` **in place** — do not change its position, do not append a new entry.
   - If the matching entry is not found (e.g., it was rotated away while the page was being executed), skip silently. This is non-blocking.
   - `grimoire-execute` **never appends new entries and never rotates**.
 
-**Rotation (only triggered by `grimoire-plan`):**
+**Rotation (only triggered by `grimoire-spec`):**
 - Create `.grimoire/bag/historic/` if it does not exist.
 - Determine the next suffix: list names in `.grimoire/bag/historic/`, extract the `N` from `HISTORIC-N.md` files, and use `max(N) + 1`. If the folder is empty, use `N = 1`.
 - Move `.grimoire/HISTORIC.md` to `.grimoire/bag/historic/HISTORIC-N.md`, then write a fresh `HISTORIC.md` with the new page as entry `1.`.
@@ -108,11 +120,12 @@ Newest entry is item `1.`; older entries are renumbered downward. Status is one 
 **How other skills consume it (read-only):**
 - If `.grimoire/HISTORIC.md` exists, read it for recent-execution context and current status.
 - If older context is relevant to the current task, browse `.grimoire/bag/historic/` in descending suffix order.
-- Absence of the file is non-blocking: proceed without recency context.
+- Absence of the file is non-blocking for read-only consumers: proceed without recency context. (`grimoire-plan` and `grimoire-execute`, however, must hard-stop if the page they are asked to operate on has no matching entry — see `§ Pause-point pattern`.)
 
 **Commits:**
-- `grimoire-plan` ends with `chore: register page <name> in historic` covering the new entry (and any rotation) — see `§ Commits`.
-- `grimoire-execute` ends with `chore: mark page <name> finished` covering the in-place status update — see `§ Commits`.
+- `grimoire-spec` ends with `chore: register page <name> in historic` covering the new entry (and any rotation) — see `§ Commits`.
+- `grimoire-plan` ends with `chore: mark page <name> planned` covering the in-place `[spec]` → `[planned]` update — see `§ Commits`.
+- `grimoire-execute` ends with `chore: mark page <name> finished` covering the in-place `[planned]` → `[finished]` update — see `§ Commits`.
 
 ---
 
@@ -122,6 +135,20 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 
 - **`grimoire-init` — clarifying questions:** after analyzing the codebase, ask the user only about facts that cannot be inferred from the code (purpose, audience, stage, non-obvious constraints). In update mode, ask only about deltas.
 - **`grimoire-init` — draft review:** after composing the proposed `PROJECT.md`, output it inline and PAUSE for the user's confirmation or edits before writing the file.
-- **`grimoire-plan` — unclear requirements:** if any requirement is ambiguous or a critical architectural decision is needed, ask clarifying questions before writing the plan.
-- **`grimoire-quick` — scope gatekeeper:** if the request is too large/complex to fit a quick execution, STOP immediately and tell the user to switch to `grimoire-plan` instead of generating a plan.
+- **`grimoire-spec` — clarifying questions:** after analyzing the codebase and the user's request, ask targeted questions about pain, ambiguities, scope, and critical architectural decisions. Answer the user's questions in turn. Iterate until a consensus on what the page must deliver is reached.
+- **`grimoire-spec` — draft review:** after composing the proposed `SPEC.md`, output it inline and PAUSE for the user's confirmation or edits before writing the file. Do not write or touch `HISTORIC.md` yet.
+- **`grimoire-plan` — precondition check (HARD STOP):** before doing anything else, resolve the page number to `.grimoire/pages/NNN-*/`. If the folder does not exist, if `SPEC.md` is missing, or if the entry's status in `HISTORIC.md` is not `[spec]`, STOP immediately with a clear message naming the current state and the skill the user should run instead. Never offer to run that skill automatically; never silently fix the state.
+  - Page NNN does not exist → `❌ Page NNN não existe. Rode /grimoire-spec primeiro.`
+  - `SPEC.md` missing → `❌ Page NNN não tem SPEC.md. Rode /grimoire-spec primeiro.`
+  - Status is `[planned]` → `❌ Page NNN já foi planejada.`
+  - Status is `[finished]` → `❌ Page NNN já foi finalizada.`
+  - Entry missing from `HISTORIC.md` (rotated or never registered) → `❌ Page NNN não está registrada no HISTORIC. Rode /grimoire-spec primeiro.`
+- **`grimoire-plan` — unclear requirements:** after the precondition passes and the SPEC has been read, if a critical architectural decision is still ambiguous, ask clarifying questions before writing step files.
+- **`grimoire-execute` — precondition check (HARD STOP):** before doing anything else, resolve the page number to `.grimoire/pages/NNN-*/`. If the folder does not exist, if no step file (`1-*.md`) is present, or if the entry's status in `HISTORIC.md` is not `[planned]`, STOP immediately with a clear message. Never offer to run another skill automatically; never silently fix the state.
+  - Page NNN does not exist → `❌ Page NNN não existe.`
+  - No step files in the folder → `❌ Page NNN ainda não tem plano. Rode /grimoire-plan NNN primeiro.`
+  - Status is `[spec]` → `❌ Page NNN ainda está em spec. Rode /grimoire-plan NNN primeiro.`
+  - Status is `[finished]` → `❌ Page NNN já foi finalizada.`
+  - Entry missing from `HISTORIC.md` (rotated) → proceed; this matches the existing "skip silently if rotated" rule in `§ Historic` because rotation can happen during long executions.
+- **`grimoire-quick` — scope gatekeeper:** if the request is too large/complex to fit a quick execution, STOP immediately and tell the user to switch to `grimoire-spec` (the entry point to the long-form Spec → Plan → Execute pipeline) instead of generating a plan.
 - **`grimoire-quick` — plan authorization:** after outputting the inline plan in chat, PAUSE and wait for the user's explicit authorization or corrections before spawning the sub-agent. Do not start coding yet.
