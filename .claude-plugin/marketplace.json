@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "grimoire",
-      "source": ".",
+      "source": "./",
       "description": "Disciplined Spec → Plan → Execute pipeline with a Quick fast-path. Pages live in .grimoire/pages/; status tracked in HISTORIC.md.",
       "category": "workflow",
       "version": "0.4.0",
