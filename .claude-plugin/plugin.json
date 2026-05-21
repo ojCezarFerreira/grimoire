@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "grimoire",
   "displayName": "Grimoire",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Disciplined Plan → Execute pipeline with a Quick fast-path. Strict TDD, atomic Conventional Commits, sub-agent orchestration, persistent .grimoire/ directory.",
   "author": {
     "name": "Cezar Ferreira",
