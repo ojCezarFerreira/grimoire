@@ -59,6 +59,10 @@ Generate a single plan when the feature fits comfortably in one execution contex
 **Project context file:**
 - `.grimoire/PROJECT.md` — persistent project context generated and updated by `grimoire-init`. Loaded by every skill's `[Required Reading]` block. Not subject to `NNN-` numbering and never moved to `.grimoire/finished/`.
 
+**Recent execution log:**
+- `.grimoire/HISTORIC.md` — recency log maintained by `grimoire-execute`. Holds the last 5 executions (newest at top), each with a short description. Not subject to `NNN-` and never moved to `.grimoire/finished/`. See `§ Historic`.
+- `.grimoire/bag/historic/` — archive. When `HISTORIC.md` is full (5 entries) and a new execution must be recorded, the file is moved here with a `HISTORIC-N.md` suffix before a fresh `HISTORIC.md` is started.
+
 ---
 
 ## § Project context
@@ -69,6 +73,28 @@ Every Grimoire skill loads `.grimoire/PROJECT.md` (if present) at the top of its
 - **If it does not exist:** proceed without it, and at the end of the run remind the user that running `grimoire-init` once will give future Grimoire sessions richer context. This is non-blocking — never refuse to work because `PROJECT.md` is missing.
 - **`grimoire-init` is the only skill that writes `PROJECT.md`.** Other skills must not modify it as a side effect.
 - **Update mode:** when `grimoire-init` is invoked and `.grimoire/PROJECT.md` already exists, it reads the existing file first and asks only about deltas (what has changed or is missing), then rewrites the file in place.
+
+---
+
+## § Historic
+
+`.grimoire/HISTORIC.md` is the recency log every Grimoire skill consults to understand what has been executed recently in the project. `.grimoire/bag/historic/` stores rotated snapshots of that log for older context.
+
+- **Who creates it:** bootstrap of `HISTORIC.md` is owned by a future skill. None of the current skills create the file from scratch.
+- **Who writes it:** `grimoire-execute` is the only skill that updates `HISTORIC.md`. Every other skill treats it as read-only.
+- **Append (inside `grimoire-execute`, after successful finalization of an execution):**
+  - If `.grimoire/HISTORIC.md` **does not exist** → skip silently. This step is non-blocking; never refuse an execution because of it. Once the bootstrap skill is added, this path stops being used.
+  - If it exists and has **fewer than 5 entries** → prepend the new entry at the top in the form `1. **<plan-name>** — <1–2 sentence description of what was delivered>`, renumbering the previous ones.
+  - If it exists and already has **5 entries** → rotate first (see below), then write a brand-new `HISTORIC.md` containing the new entry as item `1.`.
+- **Rotation:**
+  - Create `.grimoire/bag/historic/` if it does not exist.
+  - Determine the next suffix: list names in `.grimoire/bag/historic/`, extract the `N` from `HISTORIC-N.md` files, and use `max(N) + 1`. If the folder is empty, use `N = 1`.
+  - Move `.grimoire/HISTORIC.md` to `.grimoire/bag/historic/HISTORIC-N.md`.
+- **How other skills consume it (read-only):**
+  - If `.grimoire/HISTORIC.md` exists, read it for recent-execution context.
+  - If older context is relevant to the current task, browse `.grimoire/bag/historic/` in descending suffix order.
+  - Absence of the file is non-blocking: proceed without recency context.
+- **Commit:** the append (or append + rotation) inside `grimoire-execute` is committed alongside the `chore: move [plan-name] to finished` commit, or as a separate `chore: update historic log` commit when atomic cohesion is clearer that way — see `§ Commits`.
 
 ---
 
