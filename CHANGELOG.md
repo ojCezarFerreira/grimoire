@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] — 2026-05-22
+
+### Changed
+- Ephemeral draft files in `§ IDE-aware review` now include a Unix-epoch suffix in their filenames (`quick-plan-<epoch>.md`, `grimoire-update-changelog-<epoch>.md`) so each run writes to a unique path. This defeats the VSCode markdown preview cache, which is keyed by file path — previously, a second invocation could show the stale preview from the prior run. Final-destination drafts (`PROJECT.md`, `SPEC.md`) are unaffected and keep their canonical names.
+- `grimoire-quick` Phases 2/5 and `grimoire-update` Phases 4/5/8: write and cleanup now use the memorized per-run path instead of a fixed filename.
+
 ## [0.4.1] — 2026-05-21
 
 ### Added
@@ -34,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.4.2]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.4.2
 [0.4.1]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.4.1
 [0.4.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.3.0

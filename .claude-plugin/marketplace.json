@@ -12,7 +12,7 @@
       "source": "./",
       "description": "Disciplined Spec → Plan → Execute pipeline with a Quick fast-path. Pages live in .grimoire/pages/; status tracked in HISTORIC.md.",
       "category": "workflow",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "homepage": "https://github.com/ojCezarFerreira/grimoire",
       "repository": "https://github.com/ojCezarFerreira/grimoire",
       "license": "MIT"
