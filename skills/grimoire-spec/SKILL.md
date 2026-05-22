@@ -5,7 +5,7 @@ argument-hint: Page request / what you want to build
 ---
 
 **[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ Commits, § .grimoire/ layout, § Project context, § Historic, § Pause-point pattern) are load-bearing for this skill. **Note:** this skill is the writer for `HISTORIC.md` (bootstrap + append + rotate); `grimoire-plan` and `grimoire-execute` only update status in place. `§ TDD` does not apply here — this skill produces a specification, not code.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ Commits, § .grimoire/ layout, § Project context, § Historic, § IDE-aware review, § Pause-point pattern) are load-bearing for this skill. **Note:** this skill is the writer for `HISTORIC.md` (bootstrap + append + rotate); `grimoire-plan` and `grimoire-execute` only update status in place. `§ TDD` does not apply here — this skill produces a specification, not code.
 2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and suggest the user run `grimoire-init` once this task is complete.
 3. If `.grimoire/HISTORIC.md` exists, read it for recent-page context. If older context seems relevant, browse `.grimoire/bag/historic/` (newest suffix first). Missing → proceed without it; this skill will bootstrap it in Phase 6.
 
@@ -68,12 +68,14 @@ Answer the user's questions in turn. Do not write any file until consensus is re
   - Links / paths to existing code, ADRs, prior pages, external docs.
   ```
 
-- Output the proposed content inline in the chat.
-- Pause per `§ Pause-point pattern` (grimoire-spec: draft review): wait for the user's confirmation or edits before writing any file. Do not touch `HISTORIC.md` yet.
+- Present the proposed content for review per `§ IDE-aware review`:
+  - **IDE detected:** create `.grimoire/pages/NNN-[page-name]/` if it does not exist, then write the draft to `.grimoire/pages/NNN-[page-name]/SPEC.md` so the IDE renders it. Tell the user in one short line that the draft is open in the editor. Do **not** touch `HISTORIC.md` yet — that still belongs to Phase 6.
+  - **Terminal-only fallback:** output the proposed content inline in the chat.
+- Pause per `§ Pause-point pattern` (grimoire-spec: draft review): wait for the user's confirmation or edits. Do not advance to Phase 5 until approved. If the user abandons the draft, delete the file and the folder (IDE mode only).
 
-**[Phase 5: Write SPEC.md]**
-- Create `.grimoire/pages/NNN-[page-name]/` if it does not exist.
-- Write the approved content to `.grimoire/pages/NNN-[page-name]/SPEC.md`.
+**[Phase 5: Finalize SPEC.md]**
+- **IDE mode:** the approved file is already at `.grimoire/pages/NNN-[page-name]/SPEC.md`. No additional write is needed.
+- **Inline fallback:** create `.grimoire/pages/NNN-[page-name]/` if it does not exist, then write the approved content to `.grimoire/pages/NNN-[page-name]/SPEC.md`.
 - Commit per `§ Commits`: `docs(grimoire): spec page <name>`. This commit covers only the new `SPEC.md` (and the folder it lives in).
 
 **[Phase 6: HISTORIC.md Maintenance]**
