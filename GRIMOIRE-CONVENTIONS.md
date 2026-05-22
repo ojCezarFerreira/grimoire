@@ -140,8 +140,10 @@ When a skill must show the user a draft, plan, or other markdown content for rev
 1. Write the reviewable content to disk so the IDE auto-surfaces it with markdown preview:
    - `grimoire-init` → `.grimoire/PROJECT.md` (final destination).
    - `grimoire-spec` → `.grimoire/pages/NNN-[page-name]/SPEC.md` (create the page folder first if needed; do **not** touch `HISTORIC.md` yet — that still belongs to Phase 6).
-   - `grimoire-quick` → `.grimoire/bag/drafts/quick-plan.md` (create the folder if needed; this is a throwaway draft, not a final artifact).
-   - `grimoire-update` → `.grimoire/bag/drafts/grimoire-update-changelog.md` (same — throwaway).
+   - `grimoire-quick` → `.grimoire/bag/drafts/quick-plan-<epoch>.md` (create the folder if needed; this is a throwaway draft, not a final artifact).
+   - `grimoire-update` → `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (same — throwaway).
+
+   For the two ephemeral drafts above (`quick-plan`, `grimoire-update-changelog`), generate `<epoch>` as a Unix timestamp in seconds (`$(date +%s)`) at the moment of writing and memorize the resulting path for use during cleanup. This defeats the VSCode markdown preview cache, which keys on file path — without the suffix, a second invocation can show the stale preview from the prior run. The final-destination drafts (`PROJECT.md`, `SPEC.md`) keep their canonical names.
 2. Tell the user in one short line which file was opened and what answer you're waiting for. Example: `📄 Rascunho aberto em .grimoire/PROJECT.md — revise no editor e diga "ok" para seguir, ou liste mudanças.`
 3. PAUSE for the user's confirmation or edits — same semantics as the inline flow.
 4. On approval:
