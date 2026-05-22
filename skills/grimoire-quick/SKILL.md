@@ -20,7 +20,7 @@ $ARGUMENTS
 - **CRITICAL — SCOPE CHECK** (per `§ Pause-point pattern`, grimoire-quick: scope gatekeeper): if this request is too large, complex, or risks context degradation, you MUST STOP immediately. Do not generate a plan. Inform me with the following message: *"This task is too large for a quick execution. Please start a new session and run `/grimoire-spec` to open a page in the long-form Spec → Plan → Execute pipeline."*
 
 **[Phase 2: Quick Planning & User Authorization]**
-- If the scope is confirmed as small and safe for quick execution, ask any clarifying questions if necessary.
+- If the scope is confirmed as small and safe for quick execution, perform the final clarity check per `§ Pause-point pattern` (grimoire-quick: final clarity check): self-review the intended fix and, if any expected-behavior detail, file-scope question, error-handling choice, or naming decision is still based on a silent assumption, PAUSE and ask the user via `AskUserQuestion` (or equivalent available tool) before composing the plan draft. Only continue to the next bullet once the fix is fully unambiguous.
 - Present a clear, step-by-step execution plan for my review per `§ IDE-aware review`:
   - **IDE detected:** create `.grimoire/bag/drafts/` if it does not exist, then write the plan to `.grimoire/bag/drafts/quick-plan-<epoch>.md` so the IDE renders it. Generate `<epoch>` with `date +%s` at the moment of writing and memorize the full path — it will be reused in Phase 5 and in the abandonment branch below. Tell me in one short line that the plan is open in the editor.
   - **Terminal-only fallback:** output the plan directly in our chat.

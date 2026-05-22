@@ -43,6 +43,7 @@ Do **not** offer to run any other skill automatically, and do **not** silently f
   - **Simple page:** a single step file `1-[step-name].md` containing the full step-by-step execution plan.
   - **Larger page:** multiple sequential step files, each a smaller, highly cohesive, sequential portion of the work. Split when token usage or context degradation becomes a risk during execution.
 - The page folder and its `NNN-[page-name]` identity already exist — do not rename, do not move, do not create a new page folder. Choose only the step count and the per-step names.
+- Before proceeding to Phase 4, perform the final clarity check per `§ Pause-point pattern` (grimoire-plan: final clarity check): self-review the planned step breakdown and, if any architectural choice, step boundary, or tradeoff is still based on a silent assumption, PAUSE and ask the user via `AskUserQuestion` (or equivalent available tool). Only continue to Phase 4 once the plan is fully unambiguous.
 
 **[Phase 4: Write Step Files]**
 - Inside the existing `.grimoire/pages/NNN-[page-name]/` folder, write each step file as `1-[step-name].md`, `2-[step-name].md`, … in numeric order. Do not touch `SPEC.md`.
