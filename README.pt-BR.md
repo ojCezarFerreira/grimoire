@@ -6,7 +6,7 @@
 
 [English](README.md) · **Português (Brasil)**
 
-Um plugin do Claude Code que reúne sete skills num pipeline disciplinado **Spec → Plan → Execute**, com um caminho rápido **Quick**, um passo **Init** que dá contexto de projeto compartilhado a toda sessão, e um passo **Update** que mantém o próprio plugin atualizado.
+Um plugin do Claude Code que reúne oito skills num pipeline disciplinado **Spec → Plan → Execute**, com um caminho rápido **Quick**, um passo **Init** que dá contexto de projeto compartilhado a toda sessão, e um passo **Update** que mantém o próprio plugin atualizado.
 
 </div>
 
@@ -30,7 +30,7 @@ Grimoire é o oposto: um pipeline disciplinado que pergunta até **você** ter c
 /plugin install grimoire@grimoire
 ```
 
-É isso — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know` e `/grimoire-update` ficam disponíveis em toda sessão do Claude Code.
+É isso — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update` e `/grimoire-note` ficam disponíveis em toda sessão do Claude Code.
 
 Para atualizar mais tarde, é só rodar `/grimoire-update` — ele cuida da checagem de versão, do diff do changelog e dos dois comandos oficiais.
 
@@ -60,6 +60,7 @@ O formato `grimoire@grimoire` no comando principal é `nome-do-plugin@nome-do-ma
 | `/grimoire-quick <fix>`   | Caminho rápido para fixes triviais. Recusa e redireciona para `/grimoire-spec` se o escopo for grande demais.               | [↓](#grimoire-quick)   |
 | `/grimoire-know <pergunta>` | Responde perguntas sobre o repositório ou a aplicação — somente leitura, com pesquisa na web e citação de fontes quando necessário. | [↓](#grimoire-know)    |
 | `/grimoire-update`        | Compara versão instalada vs. mais recente, mostra o changelog, e te guia pelos comandos oficiais de update.                 | [↓](#grimoire-update)  |
+| `/grimoire-note <nota>`   | Refina cirurgicamente `Key Conventions` e `Notes` em `.grimoire/PROJECT.md` a partir de texto livre — dedup semântica, consolidação retroativa, revisão de diff IDE-aware. | [↓](#grimoire-note)    |
 
 ## Skills em detalhe
 
@@ -112,6 +113,14 @@ Manutenção do próprio plugin. Lê a versão instalada de `${CLAUDE_PLUGIN_ROO
 
 Se você já está na versão mais recente, ele sai em silêncio. Não escreve nada no seu projeto e nunca spawna sub-agentes — é pura orquestração de dois comandos slash que você mesmo executa.
 
+### /grimoire-note
+
+Writer cirúrgico e incremental do `.grimoire/PROJECT.md`. Você passa uma nota em texto livre (`/grimoire-note "sempre usamos snake_case em colunas Postgres"`); ele parseia a entrada, divide-a semanticamente em N regras distintas quando aplicável, lê `## Key Conventions / Constraints` e `## Notes` por completo, e propõe a melhor síntese contra o que já está lá — merge, reescrita, generalização ou aceitação como nova entrada — favorecendo frases com o mínimo de palavras. Cada invocação também roda um passe de consolidação retroativa sobre todas as regras existentes nas duas seções, apertando quase-duplicatas e frases verbosas.
+
+O escopo é deliberadamente apertado. Ele nunca cria `PROJECT.md` (faz hard-stop e te aponta para `/grimoire-init` se o arquivo estiver faltando), nunca adiciona nem renomeia seções, nunca edita nada fora de `## Key Conventions / Constraints` e `## Notes`, e nunca toca em `HISTORIC.md` nem em pasta de page. Esse é o contrato de dual-writer com `grimoire-init` — veja [GRIMOIRE-CONVENTIONS.md § Project context](GRIMOIRE-CONVENTIONS.md#-project-context) para a divisão completa.
+
+O `PROJECT.md` proposto é apresentado para revisão via pause-point IDE-aware: o arquivo é escrito em disco para o editor renderizar o diff, e só depois de aprovação explícita a skill faz um único commit atômico (`docs(grimoire): refine project context`) tocando apenas `.grimoire/PROJECT.md`. Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-know` e `grimoire-update`).
+
 ## Como funciona
 
 As cinco skills do pipeline (`init`, `spec`, `plan`, `execute`, `quick`) compõem um fluxo único. `init` roda uma vez por projeto; `spec → plan → execute` é o caminho longo para tudo que merece uma page; `quick` é a saída de emergência para trabalho trivial que não merece.
@@ -162,7 +171,7 @@ Os números de page passados para `/grimoire-plan` e `/grimoire-execute` aceitam
 
 ## Convenções
 
-As skills do pipeline (`init`, `spec`, `plan`, `execute`, `quick`) compartilham uma única fonte de verdade para as regras de workflow — TDD estrito, Conventional Commits atômicos, orquestração de sub-agentes, layout `.grimoire/pages/`, carregamento de contexto de projeto, e o log de recência e status-of-record em `HISTORIC.md` — em [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md). O `grimoire-update` é manutenção do próprio plugin e o `grimoire-know` é Q&A somente-leitura, então nenhum dos dois participa dessas regras.
+As skills do pipeline (`init`, `spec`, `plan`, `execute`, `quick`) compartilham uma única fonte de verdade para as regras de workflow — TDD estrito, Conventional Commits atômicos, orquestração de sub-agentes, layout `.grimoire/pages/`, carregamento de contexto de projeto, e o log de recência e status-of-record em `HISTORIC.md` — em [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md). O `grimoire-update` é manutenção do próprio plugin, o `grimoire-know` é Q&A somente-leitura, e o `grimoire-note` é um writer cirúrgico do `PROJECT.md`, então nenhum dos três participa dessas regras.
 
 Quando uma regra muda, ela muda lá uma vez.
 
