@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-05-23
+
+### Added
+- New `grimoire-note` skill: free-text-in, surgical-edit-out maintenance of `.grimoire/PROJECT.md`. Scope is strictly limited to the `## Key Conventions / Constraints` and `## Notes` sections; the rest of the file is owned by `grimoire-init`. Uses LLM-driven semantic deduplication, refinement of stale phrasing, contradiction handling, and retroactive consolidation across pre-existing entries; assigns each incoming line heuristically to Conventions vs. Notes and pauses to ask when ambiguous; force-fits content that does not match either section into the closer one and flags the misfit back to the user. Honors `§ IDE-aware review` for diff inspection and lands a single atomic commit `docs(grimoire): refine project context`. Writes nothing outside the two governed sections, creates no page folder, and does not touch `HISTORIC.md` — fully orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know` and `grimoire-update`).
+
+### Changed
+- `GRIMOIRE-CONVENTIONS.md § Project context` amended to a **dual-writer contract**: `grimoire-init` owns `.grimoire/PROJECT.md` as a whole (bootstrap, every section, section creation), while `grimoire-note` owns only `## Key Conventions / Constraints` and `## Notes` and edits them incrementally.
+- `grimoire-init` Phase 2 (UPDATE mode only): preserve-by-default for `## Key Conventions / Constraints` and `## Notes`. The skill now lists existing entries back to the user with an "anything stale?" prompt; additions remain permitted, and silence keeps every existing entry untouched.
+
 ## [0.6.0] — 2026-05-22
 
 ### Added
@@ -54,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.7.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.7.0
 [0.6.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.6.0
 [0.5.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.5.0
 [0.4.2]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.4.2
