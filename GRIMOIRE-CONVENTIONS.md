@@ -25,10 +25,80 @@ The same loop applies regardless of whether the work comes from `grimoire-plan`,
 The main context is an orchestrator. Implementation work runs inside sub-agents so the orchestrator's context stays lucid.
 
 - **`grimoire-execute` on a page with one step file:** execute directly inside one sub-agent.
-- **`grimoire-execute` on a page with multiple step files:** spawn one sub-agent **per step file**, in strict numeric order. Never start the next step until the current sub-agent has fully completed its assignment.
+- **`grimoire-execute` on a page with multiple step files and NO `depends-on` frontmatter:** strict serial — spawn one sub-agent **per step file** in numeric order; never start step `N+1` until step `N` has fully completed. This is the default and matches the pre-0.8.0 behavior.
+- **`grimoire-execute` on a page where any step file declares `depends-on` frontmatter:** parallel-wave mode per `§ Parallel execution`. Steps inside a single wave MAY be spawned **concurrently** — one sub-agent per step, each operating inside its own git worktree per the worktree contract. Sequencing **across** waves remains strict: wave `K+1` never starts until wave `K` has settled and all of its worktrees have been torn down. Sequencing **inside** a wave is unconstrained.
 - **`grimoire-quick`:** spawn a single sub-agent for the entire fix once the user has authorized the inline plan.
 
 Always instruct the sub-agent with the specific step file (or inline plan) it must execute, and require it to follow `§ TDD` and `§ Commits`.
+
+---
+
+## § Parallel execution
+
+`grimoire-execute` MAY run mutually-independent step files of the same page concurrently. This section is the **single source of truth** for the parallel-wave model — SKILL.md bodies reference it; they never restate the rules.
+
+The model is **strictly opt-in**. A page becomes eligible for parallel execution only when at least one of its step files declares `depends-on` in its YAML frontmatter (see schema below). A page where no step file carries `depends-on` runs via the legacy strict-serial path defined in `§ Sub-agent spawning` — byte-identical to the pre-0.8.0 behavior.
+
+### Frontmatter schema
+
+Step files MAY carry a YAML frontmatter block at the very top of the file, delimited by `---` lines:
+
+```
+---
+depends-on: [<step-numbers>]
+touches: [<repo-relative paths>]
+---
+
+# Step N — …
+
+(markdown body as before)
+```
+
+- `depends-on` — list of step numbers (integers) this step depends on. **Missing or empty means the step is a DAG root** (eligible for wave `0`).
+- `touches` — list of repo-relative paths the step will modify. **Optional but recommended.** Used at plan time to surface advisory overlap warnings between parallel siblings; not enforced at execute time.
+- The markdown body below the frontmatter is the canonical step content the sub-agent executes; the frontmatter is parsed and stripped by the runtime.
+
+### DAG construction
+
+- **Nodes** are step files (identified by step number).
+- **Edges** are `depends-on` references: an edge from step `K` to step `N` exists when step `N` lists `K` in its `depends-on`.
+- **Cycle detection is mandatory** at both plan time (refuse to write step files) and execute time (refuse to start the run). Defense in depth — neither side may assume the other validated the graph.
+- **Dangling references are a hard error.** A `depends-on` value pointing at a step number that does not exist in the page is a hard error at both plan time and execute time. It is never silently ignored.
+
+### Wave construction (Kahn-style topological levels)
+
+- **Wave `0`** = the set of all steps whose `depends-on` is missing or empty (DAG roots).
+- **Wave `K`** = the set of all steps whose entire `depends-on` set lies in waves `< K`.
+- Waves are computed deterministically from the DAG at the start of the run.
+- All steps in a wave run **concurrently**. Waves run **sequentially** in increasing order (`0`, then `1`, then `2`, …).
+
+### Worktree contract (load-bearing — non-negotiable)
+
+- **Location.** Each step's worktree lives at the deterministic, page- and step-scoped path `.grimoire/bag/worktrees/page-NNN-step-K/`, where `NNN` is the zero-padded page number and `K` is the step number.
+- **Creation.** At the start of each wave, the orchestrator runs `git worktree add` for every step in the wave, branching from the main workspace's current `HEAD`. The runtime MAY use detached worktrees or short-lived branches — the only requirement is that each worktree is independently committable.
+- **Per-step sub-agent isolation.** Each step's sub-agent works **only inside its own worktree directory**. It must not touch the main workspace, sibling worktrees, or any `.grimoire/` state file outside its worktree.
+- **Cherry-pick back to main.** Once the wave settles (every step sub-agent has either succeeded or failed), the orchestrator cherry-picks each **successful** step's commits back to the main workspace **in step-number order** (lowest step number first). The main branch history reads as if the wave had run serially, even though the work itself was concurrent.
+- **Unconditional teardown.** Before starting the next wave, **and** at the end of the run regardless of outcome (success, partial failure, or hard abort), the orchestrator runs `git worktree remove --force <path>` for every worktree it created in that wave, followed by a defensive filesystem `rm -rf` on any residual directory under `.grimoire/bag/worktrees/`. **At the end of any `grimoire-execute` run, `.grimoire/bag/worktrees/` MUST be empty AND `git worktree list` MUST show only the main workspace.**
+- The skill body must enumerate teardown as a **try/finally-shaped invariant** — teardown runs whether the wave succeeded, failed, partially failed, or the run was aborted. The maintainer has been bitten by stale worktree clutter before; this is the dominant safety property of the feature.
+
+### Failure semantics
+
+- **Failed step → worktree discarded.** No commits from a failed step's worktree are cherry-picked back to the main workspace. The worktree is removed per the teardown rule above.
+- **Successful siblings still cherry-pick.** Other steps in the same wave that succeeded **still apply their commits** back to the main workspace, in step-number order, skipping the failed step's slot.
+- **Downstream waves are filtered.** Any step in a later wave whose `depends-on` set **transitively** includes the failed step is **skipped**. Independent downstream waves (no transitive dep on the failure) still run.
+- **No mid-wave kill.** When one step inside a wave fails, the orchestrator waits for the other in-flight siblings to finish (success or failure) before declaring the wave result. Premature cancellation is out of scope.
+- **HISTORIC stays `[planned]`** on partial failure. The page is **not** marked `[finished]` unless every step succeeded. The user re-runs `/grimoire-execute NNN` to retry; the re-run **starts from scratch** — there is no resume-from-partial-success state file in v1.
+- **No concurrency cap** inside `grimoire-execute` itself. All wave members are spawned at once. The runtime's existing sub-agent limits are the de-facto cap.
+
+### Back-compat fallback
+
+- If **no step file** in the page carries `depends-on` frontmatter, `grimoire-execute` falls back to the **legacy strict-serial path** defined in `§ Sub-agent spawning`. Behavior is **byte-identical to the pre-0.8.0 implementation**: no worktrees are created, no waves are computed, sub-agents are spawned one at a time in numeric order.
+- This detection happens in `grimoire-execute` Phase 1, before any execution begins.
+- Existing pages (e.g., `001-grimoire-note-skill`) are unaffected — no auto-migration, no silent re-planning, no auto-emit of frontmatter on legacy step files.
+
+### Commits
+
+Per-step atomic commits and the page-level finalization commit follow `§ Commits`. This section does not restate those rules — it only notes that step-level commits are made by the sub-agent **inside its worktree**, and that cherry-pick-back to the main workspace preserves their atomicity and order.
 
 ---
 
@@ -62,6 +132,7 @@ Every feature, change, or alteration tracked by Grimoire is a **page**. All page
 - Always sequential, page-scoped numbering: `1-[step-name].md`, `2-[step-name].md`, `3-[step-name].md`, … (e.g., `1-schema.md`, `2-endpoints.md`, `3-tests.md`).
 - A simple page has a single step file (`1-[step-name].md`); a larger page has multiple.
 - Written by `grimoire-plan`. `grimoire-plan` chooses how many step files a page needs based on projected context lucidity per step.
+- Step files MAY carry YAML frontmatter per `§ Parallel execution` to declare inter-step dependencies and the files they touch. The canonical body of the step file remains markdown; the frontmatter is parsed by `grimoire-plan` (validation) and `grimoire-execute` (wave construction).
 
 **On completion (`grimoire-execute`):**
 - The page folder, its `SPEC.md`, and its step files stay in place. **Nothing is moved.**
@@ -176,13 +247,15 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
   - Status is `[finished]` → `❌ Page NNN já foi finalizada.`
   - Entry missing from `HISTORIC.md` (rotated or never registered) → `❌ Page NNN não está registrada no HISTORIC. Rode /grimoire-spec primeiro.`
 - **`grimoire-plan` — unclear requirements:** after the precondition passes and the SPEC has been read, if a critical architectural decision is still ambiguous, ask clarifying questions before writing step files.
-- **`grimoire-plan` — final clarity check:** immediately before writing step files in Phase 4, the agent must self-review the planned step breakdown and surface any remaining assumption or open decision. If anything is still unclear (e.g. an architectural choice the agent had to guess, a step boundary the SPEC did not anticipate, a tradeoff with no recorded rationale), PAUSE and ask the user using the available question tooling (e.g. `AskUserQuestion`) before any step file is written. Skip silently only when the plan is fully unambiguous.
+- **`grimoire-plan` — final clarity check:** immediately before writing step files in Phase 4, the agent must self-review the planned step breakdown and surface any remaining assumption or open decision. If anything is still unclear (e.g. an architectural choice the agent had to guess, a step boundary the SPEC did not anticipate, a tradeoff with no recorded rationale), PAUSE and ask the user using the available question tooling (e.g. `AskUserQuestion`) before any step file is written. Skip silently only when the plan is fully unambiguous. **When the planner has decided to emit `depends-on` frontmatter on one or more step files**, the final clarity check MUST also surface the full DAG to the user — list each step's `depends-on` set, the computed waves, and any advisory `touches`-overlap warnings between parallel siblings — so the user can veto a suspect parallelization before step files are written. If no frontmatter will be emitted, this DAG-presentation requirement does not apply.
 - **`grimoire-execute` — precondition check (HARD STOP):** before doing anything else, resolve the page number to `.grimoire/pages/NNN-*/`. If the folder does not exist, if no step file (`1-*.md`) is present, or if the entry's status in `HISTORIC.md` is not `[planned]`, STOP immediately with a clear message. Never offer to run another skill automatically; never silently fix the state.
   - Page NNN does not exist → `❌ Page NNN não existe.`
   - No step files in the folder → `❌ Page NNN ainda não tem plano. Rode /grimoire-plan NNN primeiro.`
   - Status is `[spec]` → `❌ Page NNN ainda está em spec. Rode /grimoire-plan NNN primeiro.`
   - Status is `[finished]` → `❌ Page NNN já foi finalizada.`
   - Entry missing from `HISTORIC.md` (rotated) → proceed; this matches the existing "skip silently if rotated" rule in `§ Historic` because rotation can happen during long executions.
+  - Cyclic `depends-on` graph detected (any cycle in the DAG) → `❌ Page NNN tem dependências cíclicas entre steps. Rode /grimoire-plan NNN para corrigir.`
+  - `depends-on` reference to a non-existent step number → `❌ Page NNN referencia um step inexistente em depends-on. Rode /grimoire-plan NNN para corrigir.`
 - **`grimoire-quick` — scope gatekeeper:** if the request is too large/complex to fit a quick execution, STOP immediately and tell the user to switch to `grimoire-spec` (the entry point to the long-form Spec → Plan → Execute pipeline) instead of generating a plan.
 - **`grimoire-quick` — plan authorization:** after presenting the plan for review per `§ IDE-aware review`, PAUSE and wait for the user's explicit authorization or corrections before spawning the sub-agent. Do not start coding yet.
 - **`grimoire-quick` — final clarity check:** immediately before composing and presenting the plan draft (per `§ IDE-aware review`), the agent must self-review the intended fix and surface any remaining assumption. If anything is still unclear (e.g. expected behavior, scope of touched files, error handling, naming), PAUSE and ask the user using the available question tooling (e.g. `AskUserQuestion`) before the draft is written or pasted. Skip silently only when the fix is fully unambiguous.
