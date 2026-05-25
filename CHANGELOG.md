@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-05-25
+
+### Added
+- `GRIMOIRE-CONVENTIONS.md` — new `§ Parallel execution` section: opt-in YAML frontmatter (`depends-on`, `touches`) on step files unlocks a dependency-graph execution model for `grimoire-execute`. The orchestrator builds a DAG, runs Kahn-style topological waves, spawns one sub-agent per step inside a deterministic git worktree under `.grimoire/bag/worktrees/page-NNN-step-K/`, cherry-picks successful siblings back to the main workspace in step-number order, and tears down every worktree unconditionally (`git worktree remove --force` + defensive filesystem cleanup) before the next wave and at end of run — `.grimoire/bag/worktrees/` and `git worktree list` are guaranteed clean after every run, success or failure.
+
+### Changed
+- `GRIMOIRE-CONVENTIONS.md § Sub-agent spawning` amended to admit parallel sub-agents inside a single wave when the page's step files declare `depends-on` frontmatter; sequencing across waves remains strict; legacy strict-serial is the default when no step file carries frontmatter.
+- `GRIMOIRE-CONVENTIONS.md § .grimoire/ layout` notes that step files MAY carry YAML frontmatter per `§ Parallel execution`.
+- `GRIMOIRE-CONVENTIONS.md § Pause-point pattern`:
+  - `grimoire-plan: final clarity check` extended to require DAG presentation (wave list + per-step deps + advisory `touches`-overlap warnings) when frontmatter will be emitted, so the user can veto a suspect parallelization before step files are written.
+  - `grimoire-execute: precondition check (HARD STOP)` gains two new hard-stop cases: cyclic `depends-on` graph and `depends-on` reference to a non-existent step.
+- `skills/grimoire-plan/SKILL.md` Phase 3 extended: when steps are genuinely independent, the planner MAY emit the new frontmatter; builds and validates the DAG (cycle + dangling-reference detection, advisory `touches`-overlap), computes waves, surfaces the wave plan at the final-clarity-check pause-point, and falls back to legacy serial if the user vetoes parallelization. Phase 4 writes the YAML frontmatter block on each step file when the approved DAG calls for it.
+- `skills/grimoire-execute/SKILL.md` Phase 1 detects frontmatter and selects between the legacy strict-serial path and the parallel-wave path. Phase 2 is split into 2A (legacy) and 2B (parallel-wave: worktree creation, concurrent sub-agent spawn, wave-settle wait, cherry-pick in step-number order, unconditional teardown as a try/finally invariant). Phase 4 splits finalization: fully-successful runs mark `[finished]`; partial-failure runs keep HISTORIC at `[planned]` and report finished / failed / skipped steps to the user.
+- `README.md`, `README.pt-BR.md`, `CLAUDE.md` describe the new wave model in their `grimoire-plan` and `grimoire-execute` entries, pointing to `§ Parallel execution` for details.
+
+### Compatibility
+- **Pure opt-in.** Pages whose step files declare no `depends-on` frontmatter execute byte-identically to pre-0.8.0 — no worktrees created, no behavior change. Existing pages (e.g., `001-grimoire-note-skill`) are unaffected; no auto-migration.
+
 ## [0.7.0] — 2026-05-23
 
 ### Added
@@ -63,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.8.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.8.0
 [0.7.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.7.0
 [0.6.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.6.0
 [0.5.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.5.0
