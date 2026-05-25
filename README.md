@@ -86,11 +86,15 @@ Takes a page number (`1` or `001`). Hard-stops with a clear message if the page 
 
 When preconditions pass, it reads `SPEC.md` in full, evaluates complexity, and writes sequential step files (`1-[step].md`, `2-[step].md`, …) inside the existing page folder. The plan owner decides how many step files to emit: simple pages get a single step file; larger pages get more to preserve context lucidity during execution. Finally, it updates the page's `HISTORIC.md` entry from `[spec]` to `[planned]` in place — no append, no rotate.
 
+When the planned step breakdown contains genuinely independent steps, `grimoire-plan` MAY emit YAML frontmatter on step files (`depends-on`, `touches`) declaring inter-step dependencies — see [`GRIMOIRE-CONVENTIONS.md § Parallel execution`](GRIMOIRE-CONVENTIONS.md#-parallel-execution). The resulting wave plan is surfaced to you at the final-clarity-check pause-point before any step file is written, so you can veto a suspect parallelization. Pages whose steps are inherently sequential get no frontmatter and remain legacy strict-serial pages.
+
 ### /grimoire-execute
 
 Takes a page number. Hard-stops if the page is missing, has no step files, or is not in `[planned]` status.
 
 When preconditions pass, it spawns **one sub-agent per step file** in strict numeric order — step `N+1` never starts until step `N` has fully completed. Each sub-agent runs its step file under strict TDD (Red/Green/Refactor) and makes atomic Conventional Commits as it goes. On success, the page's `HISTORIC.md` entry is updated from `[planned]` to `[finished]` in place; no files are moved.
+
+When any step file of the page declares `depends-on` frontmatter, `grimoire-execute` switches to a parallel-wave model: it computes Kahn-style topological waves, runs all steps in a wave concurrently — one sub-agent per step in its own throwaway git worktree under `.grimoire/bag/worktrees/page-NNN-step-K/` — cherry-picks successful siblings back to the main branch in step-number order, and tears down every worktree unconditionally before the next wave and at end of run. Pages with no `depends-on` frontmatter anywhere fall back to the legacy strict-serial path (byte-identical to pre-0.8.0). See [`GRIMOIRE-CONVENTIONS.md § Parallel execution`](GRIMOIRE-CONVENTIONS.md#-parallel-execution) for the full contract.
 
 ### /grimoire-quick
 

@@ -86,11 +86,15 @@ Recebe um número de page (`1` ou `001`). Faz hard-stop com mensagem clara se a 
 
 Quando as precondições passam, ele lê o `SPEC.md` inteiro, avalia a complexidade e escreve arquivos de step sequenciais (`1-[step].md`, `2-[step].md`, …) dentro da pasta de page existente. O dono do plano decide quantos arquivos emitir: pages simples ganham um único step file; pages maiores ganham mais, para preservar a lucidez do contexto durante a execução. No fim, ele atualiza a entrada da page no `HISTORIC.md` de `[spec]` para `[planned]` in-place — sem append, sem rotate.
 
+Quando a quebra planejada de steps contém steps genuinamente independentes, o `grimoire-plan` PODE emitir frontmatter YAML nos step files (`depends-on`, `touches`) declarando dependências entre steps — veja [`GRIMOIRE-CONVENTIONS.md § Parallel execution`](GRIMOIRE-CONVENTIONS.md#-parallel-execution). O plano de ondas resultante é apresentado para você no pause-point de final-clarity-check antes de qualquer step file ser escrito, para que você possa vetar uma paralelização suspeita. Pages cujos steps são inerentemente sequenciais não recebem frontmatter e permanecem como pages legadas estritamente seriais.
+
 ### /grimoire-execute
 
 Recebe um número de page. Hard-stop se a page não existir, não tiver step files, ou não estiver com status `[planned]`.
 
 Quando as precondições passam, ele spawna **um sub-agente por step file** em ordem numérica estrita — o step `N+1` nunca começa antes do step `N` ter terminado por completo. Cada sub-agente executa seu step file sob TDD estrito (Red/Green/Refactor) e faz commits atômicos no padrão Conventional Commits conforme avança. No sucesso, a entrada da page no `HISTORIC.md` vira de `[planned]` para `[finished]` in-place; nenhum arquivo é movido.
+
+Quando qualquer step file da page declara frontmatter `depends-on`, o `grimoire-execute` muda para um modelo de ondas paralelas: calcula ondas topológicas estilo Kahn, roda todos os steps de uma onda concorrentemente — um sub-agente por step em seu próprio git worktree descartável sob `.grimoire/bag/worktrees/page-NNN-step-K/` — faz cherry-pick dos siblings bem-sucedidos de volta à branch principal em ordem de número de step, e derruba todo worktree incondicionalmente antes da próxima onda e ao fim da execução. Pages que não têm frontmatter `depends-on` em nenhum step caem no caminho legado estritamente serial (byte-idêntico ao pré-0.8.0). Veja [`GRIMOIRE-CONVENTIONS.md § Parallel execution`](GRIMOIRE-CONVENTIONS.md#-parallel-execution) para o contrato completo.
 
 ### /grimoire-quick
 
